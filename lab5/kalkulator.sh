@@ -1,11 +1,18 @@
 #!/bin/sh
 
+# Skrypt nie rozpoznaje kolejnosci wykonywania dzialan oprocz pierwszenstwa dla 
+# jednego poziomu nawiasow. Nie przyjmuje liczb ujemnych i wymaga poprzedzania znakow
+# (, ), * znakiem "\". Liczby, operatory i nawiasy sa podawane jako kolejne
+# argumenty wywolania skryptu, zatem nalezy je oddzielac spacja.
+
 if [ $# -eq 0 ]; then
 	echo Poprawne wywolanie programu: $0 arg1 arg2 ...
 fi
 
 NIC=0
 
+# "stale" dla zmiennej poprzednia, ktora przechowuje rodzaj poprzednio wczytanego znaku,
+# by sprawdzic, czy wyrazenie jest poprawnie skonstruane
 LICZBA=1
 NAW_ZAM=2
 NAW_OTW=3
@@ -14,20 +21,28 @@ OPERATOR=4
 NIE=0
 TAK=1
 
+# stale mapowania znakow arytmetycznych
 DODAWANIE=1
 ODEJMOWANIE=2
 MNOZENIE=3
 DZIELENIE=4
 
+# Jak dziala skrypt: przechodzi wyrazenie od lewej do prawej rozwiazujac je na biezaco.
+# Oblsuguje jeden poziom nawiasow, w ktore moze wejsc zapamietujac wynik i operator
+# sprzed nawiasu. Stad zmienne dzialanie_poza_nawiasem i dzialanie_w_nawiasie
+# opisujace ostatnie operatory po lewej odpowiednio przed i w nawiasie. 
+# Inicjowane mnozeniem, gdyz odczyt pierwszej liczby zostal zrealizowany jako
+# mnozenie jej razy 1. Stad inicjacja a=1 i c=1. 
+
 dzialanie_poza_nawiasem=$MNOZENIE
 dzialanie_w_nawiasie=$MNOZENIE
 dzialanie_tmp=$NIC
 
-#para liczb poza nawiasem:
+# para liczb potrzebna do obliczen poza nawiasem:
 a=1 
 b=$NIC 
 
-#para liczb w nawiasie:
+# para liczb potrzebna do obliczen w nawiasie:
 c=1
 d=$NIC 
 
@@ -39,10 +54,12 @@ ciag_argumentow=""
 while [ "$1" ]; do
 
 	case $1 in
-		[\(] ) 
-			echo mam nawias otwierajacy
+		[\(] ) #wczytano nawias otwierajacy
 			if [ $nawias_otwarty -eq $TAK ]; then
 				echo Blad. Dozwolony poziom nawiasow: 1. Otworzono drugi nawias.
+				echo "Dozwolone znaki: ( ) + - * / oraz liczby calkowite dodatnie."
+				echo "Liczby oddziel od operatorow i nawiasow spacjami."
+				echo "Znaki niebedace liczbami (( ) + - * /) poprzedz znakiem \ ."
 				exit 2
 			fi 
 
@@ -53,8 +70,7 @@ while [ "$1" ]; do
 			poprzednia=$NAW_OTW
 			;;
 
-		[\)] ) 
-			echo mam nawias zamykajacy
+		[\)] ) # wczytano nawias zamykajacy
 			if [ $nawias_otwarty -eq $NIE ]; then
 				echo Blad. Proba zamkniecia nieotworzonego nawiasu.
 				exit 2
@@ -79,10 +95,12 @@ while [ "$1" ]; do
 			poprzednia=$NAW_ZAM
 			;;
 
-		[+\-\*/] )
-			echo mam operator
+		[+\-\*/] ) # wczytano operator
 			if ! [ $poprzednia -eq $LICZBA -o $poprzednia -eq $NAW_ZAM ]; then
 				echo Blad. Podano operator w niewlasciwym miejscu.
+				echo "Dozwolone znaki: ( ) + - * / oraz liczby calkowite dodatnie."
+				echo "Liczby oddziel od operatorow i nawiasow spacjami."
+				echo "Znaki niebedace liczbami (( ) + - * /) poprzedz znakiem \ ."
 				exit 2
 			fi
 
@@ -110,13 +128,14 @@ while [ "$1" ]; do
 			poprzednia=$OPERATOR
 			;;
 
-		''|*[!0-9]* )
-			echo mam cos gorszego niz liczba
-			echo Blad. Okropienstwo.
+		''|*[!0-9]* ) # znaleziono sekwencje nieskladajaca sie z samych cyfr, ani nie bedaca jedna z powyzszych
+			echo Blad. Podana sekwencja znakow nie jest nawiasem, dozwolonym operatorem lub liczba.
+			echo "Dozwolone znaki: ( ) + - * / oraz liczby calkowite dodatnie."
+			echo "Liczby oddziel od operatorow i nawiasow spacjami."
+			echo "Znaki niebedace liczbami (( ) + - * /) poprzedz znakiem \ ."
 			exit 2
 			;;
-		* )
-			echo mam liczbe
+		* ) # wczytano liczbe
 			if [ $poprzednia -eq $LICZBA -o $poprzednia -eq $NAW_ZAM ]; then
 				echo Blad. Liczba w niewlasciwym miejscu.
 				exit 2
@@ -176,9 +195,12 @@ done
 
 if [ $nawias_otwarty -eq $TAK ]; then
 	echo Blad. Niedomkniety nawias.
+	echo "Dozwolone znaki: ( ) + - * / oraz liczby calkowite dodatnie."
+	echo "Liczby oddziel od operatorow i nawiasow spacjami."
+	echo "Znaki niebedace liczbami (( ) + - * /) poprzedz znakiem \ ."
 	exit 2
 fi
 
-echo $ciag_argumentow
+echo Podano dzialanie: $ciag_argumentow
 
 echo $a
